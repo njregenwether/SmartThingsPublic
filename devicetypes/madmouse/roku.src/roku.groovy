@@ -38,7 +38,10 @@ metadata {
 	}
 
 	tiles(scale: 2) {
-		multiAttributeTile(name: "main", type:"mediaPlayer", width:6, height:3, canChangeIcon: true) {
+		
+        
+        // This is the media player portion of this code.
+        multiAttributeTile(name: "main", type:"mediaPlayer", width:6, height:3, canChangeIcon: true) {
 			tileAttribute("device.status", key: "PRIMARY_CONTROL") {
 				attributeState("default", action:"selectButton")
 			}
@@ -60,16 +63,18 @@ metadata {
                 state "Netflix", label:'${currentValue}', backgroundColor:"#ff0000"
                 state "Play Movies", label:'${currentValue}', backgroundColor:"#ff0000"
                 state "Amazon Video", label:'${currentValue}', backgroundColor:"#6600ff"
+                
             
            }
 		}
 
-
+		// This is the tile in the main application once it's opened.
 		standardTile("refresh", "device.status",  width: 2, height: 2, inactiveLabel: false, decoration: "flat") {
-			state "default", label:"", action:"refresh.refresh", icon:"st.secondary.refresh", backgroundColor:"#ffffff"
+			state "default", label:"Refresh", action:"refresh.refresh", icon:"st.secondary.refresh", backgroundColor:"#ffffff"
          
 		}
-
+		
+        // Shows model in the detail view.
 		tiles {
     		valueTile("model", "device.model", decoration: "flat", width: 4, height: 1) {
            		state "default", label:'Model : ${currentValue}'
@@ -80,15 +85,19 @@ metadata {
     		}
 		}
         
+        // This is the home button in the detail view.
 		standardTile("homeButton", "device.homeButton",  width: 2, height: 2, inactiveLabel: false, decoration: "flat") {
-			state "default", label:"", action:"homeButton", icon:"st.Home.home2", backgroundColor:"#ffffff"
+			state "default", label:'Home', action:"homeButton", icon:"st.Home.home2", backgroundColor:"#ffffff"
          
 		}
 
+		// This is the button on the main view.
 		standardTile("switch", "device.switch", width: 2, height: 2, canChangeIcon: true) {
-			state "on", label:'${name}', action:"switch.off", icon:"st.switches.switch.on", backgroundColor:"#79b821"
-			state "off", label:'${name}', action:"switch.on", icon:"st.switches.switch.off", backgroundColor:"#ffffff"
+			state "on", label:'On', action:"switch.off", icon:"st.Entertainment.entertainment13", backgroundColor:"#79b821"
+			state "off", label:'Off', action:"switch.on", icon:"st.Entertainment.entertainment13", backgroundColor:"#ffffff"
 		}
+        
+        // Shows software version and the channes in the detail screen.
 		tiles {
     		valueTile("softwareVersion", "device.softwareversion", decoration: "flat", width: 4, height: 1) {
            		state "default", label:'Version : ${currentValue}'
@@ -102,10 +111,12 @@ metadata {
            		state "default", label:'${currentValue}', action:"mediaController.activities"
     		}
 		}
+		
+        // This is the view on the main device listing pages. Here we are adding the "switch" tile listed above to it. 
+ 		main (["switch"])
 
- 		main "main"
-
-		details(["main","refresh","userdevicename","model","homeButton","softwareVersion","deviceId","switch","channels"])
+		// This is the detailed view after you tap the main view and look at it. 
+		details(["main","refresh","userdevicename","model","homeButton","softwareVersion","deviceId","switch"])
 	}
 
 }
@@ -199,6 +210,8 @@ private rokuDeviceInfoAction() {
                                                         host)
 	sendHubCommand(hubAction)
 }
+
+// Builds the xml to be sent to the roku.
 private parseDeviceInfo(bodyXml){
 	def model = bodyXml.'model-name'
     sendEvent(name: "model",value: model.text())
@@ -439,7 +452,24 @@ def on() {
 }
 
 def off() {
-    sendEvent(name: "switch", value: "off")
+	/* Only the roku tv supports powering off via the external control api. 
+     	
+        Adding the home button at the beginning of this (and possibly the "on" functionality
+        might be good. For instance, if a roku doesn't support powering off, it will keep 
+        playing forever in some cases. Having this press the home button would at least 
+        stop it from generating tons of network traffic while no one is using it.
+        
+        My use case: The gastappo cable company (R) sent me a letter saying that I'm 
+        over my limit and will be billed so I am using this device handler to limit my traffic from 
+        the rokus based on if they're not being used. 
+    */
+    rokuKeyPressAppAction("Home")
+	runIn(5, getCurrentActivity) // Get current activity in 5 seconds... couldn't hurt. 
+    
+    // Send the event in 30 to give it time to jump back to the home screen to ensure that 
+    // all the traffic actually has stopped before exiting the method. Probably not needed.
+    runIn(30, sendEvent(name: "switch", value: "off")) 
+    //sendEvent(name: "switch", value: "off")
 }
 //^^^^^^^^^^^^^^ Switch Commands ^^^^^^^^^^^^^^//
 
